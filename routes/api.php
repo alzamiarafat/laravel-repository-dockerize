@@ -28,3 +28,8 @@ Route::get('/nearest-rider', [RestaurantController::class, 'findNearestRider']);
 Route::get('/test', function () {
     return "dfd344654";
 });
+
+Route::get('/users', function () {
+    $users = \App\Models\User::all();
+    return response()->json($users);
+});

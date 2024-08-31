@@ -1,37 +1,17 @@
-# Use PHP with Apache as the base image
-FROM php:8.2-apache as web
+FROM php:8.1 as php
 
-# Install Additional System Dependencies
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    zip
+RUN apt-get update -y
+RUN apt-get install -y unzip libpq-dev libcurl4-gnutls-dev
+RUN docker-php-ext-install pdo pdo_mysql bcmath
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN pecl install -o -f redis \
+    && rm -rf /tmp/pear \
+    && docker-php-ext-enable redis
 
-# Enable Apache mod_rewrite for URL rewriting
-RUN a2enmod rewrite
+WORKDIR /var/www
+COPY . .
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql zip
+COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
-# Configure Apache DocumentRoot to point to Laravel's public directory
-# and update Apache configuration files
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Copy the application code
-COPY . /var/www/html
-
-# Set the working directory
-WORKDIR /var/www/html
-
-# Install composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Install project dependencies
-RUN composer install
-
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+ENV PORT=8000
+ENTRYPOINT [ "docker/entrypoint.sh" ]
